@@ -1,0 +1,51 @@
+Q1. "Tell me about a project you built."
+->   "I built an AI-powered root cause analysis agent for Kubernetes systems. The problem it solves is that when production systems fail, engineers spend hours manually searching through thousands of log lines across multiple services to find the actual cause. My system lets an engineer type a plain English question like 'why did the payment service crash at 2am' and get back a structured root cause analysis in seconds — with the actual log evidence cited.
+It works in two modes. The first is a RAG pipeline — it converts log files into embeddings, stores them in a vector database, and when a question comes in it retrieves the most relevant log chunks and passes them to an LLM to generate the answer. The second is a ReAct agent — instead of one fixed retrieval step, the agent loops through thinking, calling tools, and observing results — checking logs, metrics, and deployment history in whatever order makes sense, the way a senior engineer would actually investigate an incident.
+The interesting engineering challenge was preventing hallucination — making sure the AI only answers based on actual log data, not from memory. I solved this with RAG, which grounds every answer in retrieved evidence, and by showing the user exactly which log chunks were used to generate the answer."
+
+Q2. "What is RAG and why did you use it?"
+-->  "I used RAG because I wanted the model to use actual log data and provide answers based on the actual logs, not from memory — so the answer is grounded and doesn't hallucinate. The way it works is — before sending the question to the LLM, the system first searches the vector database for the most relevant log chunks and passes those chunks along with the question as context. The LLM's job is just to read that evidence and explain it, not to remember or guess."
+
+Q3 — "What is the difference between RAG mode and agent mode?"
+--> "The difference is that Simple RAG is a fixed pipeline — when a question comes in, it does one similarity search, retrieves the top 5 relevant log chunks, passes them with the question to the LLM, and gets an answer. One search, one LLM call, done.
+The ReAct agent is different — it loops. The LLM thinks about what to do, calls a tool, observes the result, thinks again, calls another tool if needed, and keeps going until it has enough information to write a complete answer. It reasons like a senior engineer investigating an incident.
+Simple RAG is better for focused questions where one search is enough. The agent is better for complex multi-part investigations where you need to correlate logs, metrics, and deployment history across multiple sources."
+
+Q4 - "How do you prevent hallucinations?"
+--> "I used three techniques to prevent hallucination.*
+>
+> *First, RAG itself — instead of asking the LLM to answer from memory, I retrieve the actual relevant log chunks and pass them as context. The LLM reads real evidence and explains it, rather than guessing.*
+>
+> *Second, prompt engineering — the system prompt explicitly instructs the LLM to say 'I don't have enough information' if the logs don't contain a clear answer, rather than making something up.*
+>
+> *Third, temperature zero — I set the LLM temperature to 0, which makes it deterministic and factual. No randomness, no creativity, just the most accurate answer based on the evidence.*
+>
+> *And on top of all this, the UI shows the exact log chunks that were retrieved — so the user can always verify the AI's answer against the actual log lines themselves. That's the final safety net."*
+You covered all four layers:
+```
+Layer 1 — Architecture level    → RAG grounds the answer in evidence
+Layer 2 — Prompt level          → explicit instruction to admit uncertainty  
+Layer 3 — Model config level    → temperature = 0
+Layer 4 — UI transparency level → show retrieved chunks to user
+
+Q5 — "How would you scale this to production?"
+--> "To scale this to production I'd make changes at every layer.
+For log ingestion — instead of manually loading files, I'd set up a streaming pipeline using Kafka or AWS Kinesis that continuously ingests new logs in real time as they're generated. This means the vector store is always up to date, not a static snapshot.
+For the vector store — I'd replace ChromaDB with Pinecone or pgvector, which are designed to handle billions of vectors with distributed search. I'd also add metadata filtering so the search first narrows down to the relevant service and time window before doing semantic search — much faster at scale.
+For retrieval quality — I'd upgrade from pure dense search to hybrid retrieval, combining semantic embeddings with BM25 keyword search and a cross-encoder reranker. This gives much better results on technical log data.
+For the LLM — I'd use Azure OpenAI or AWS Bedrock instead of Groq, because they offer private VPC deployment, data privacy guarantees, and enterprise SLAs.
+For observability — I'd add LangSmith tracing to monitor every LLM call, tool invocation, latency, and token usage. And RAGAS for automated evaluation of answer quality.
+For multi-tenancy — I'd add namespace-based access control so each team only searches their own service's logs, not everyone else's."
+
+Q6 — "What challenges did you face?"
+--> "I faced three main challenges.
+First, dependency compatibility — I was using Python 3.13 which is very new, and several libraries like numpy and pandas weren't compatible with it yet. I had to diagnose the build error, understand why it was happening, and downgrade to Python 3.11 which is the stable version these libraries support. This taught me to always check library compatibility before starting a project.
+Second, model deprecation — the Groq model I was using, llama3-8b-8192, got decommissioned mid-build. I hit a 400 error from the API and had to check the deprecation docs to find the replacement — llama-3.3-70b-versatile. Which actually turned out to be a better model anyway — 70 billion parameters instead of 8 billion.
+Third, ReAct agent tool parsing — the agent was failing when calling my check_metric_spike tool because it expected two separate parameters but the LLM was passing them as one combined string. I fixed this by refactoring the tool to accept a single descriptive string and parsing it internally, which also made the tool docstring cleaner and the agent more reliable."
+
+Q7 — "Why LangChain? Why not build it yourself?"
+--> "Yes, you could absolutely call the APIs directly — and for a very simple use case that would actually be cleaner. But I used LangChain for three specific reasons.
+First, integration — LangChain provides standard interfaces that make ChromaDB, HuggingFace embeddings, and Groq all speak the same language. Without it I'd be writing a lot of custom glue code to connect these different systems.
+Second, the agent infrastructure — the ReAct loop sounds simple but implementing it properly from scratch is non-trivial. Parsing LLM output to identify tool calls, executing the right tool, feeding the observation back, handling parsing errors, stopping at the right time — LangChain's AgentExecutor handles all of this reliably. Building it myself would take days and introduce bugs.
+Third, it's the industry standard — every AI engineering team I've seen is either using LangChain or has used it. Knowing it demonstrates I can contribute immediately.
+That said, LangChain does add abstraction which makes debugging harder. And it moves fast — we actually saw this during the build, where HuggingFaceEmbeddings got deprecated. So for a simpler project I'd consider calling APIs directly. But for this level of complexity, the framework was worth it."
