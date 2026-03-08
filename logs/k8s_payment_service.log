@@ -1,0 +1,38 @@
+===== KUBERNETES EVENT LOG — payment-service — 2024-01-15 =====
+
+[2024-01-14 23:00:12] INFO  deployment/payment-service  Rolling update started: v2.3.1 → v2.4.0
+[2024-01-14 23:09:58] INFO  pod/payment-service-7d9f8b  Readiness probe passed — pod marked Ready
+[2024-01-14 23:10:04] INFO  deployment/payment-service  Rollout complete: 3/3 pods running v2.4.0
+
+===== TRAFFIC LOGS — 2024-01-15 01:00–02:00 UTC =====
+
+[2024-01-15 01:00:00] INFO  pod/payment-service-7d9f8b  Steady state: 380 req/s, memory=490Mi
+[2024-01-15 01:44:00] WARN  pod/payment-service-7d9f8b  Traffic spike detected: 1240 req/s (3.1x baseline)
+[2024-01-15 01:45:00] WARN  pod/payment-service-7d9f8b  Memory usage rising: 680Mi/1Gi (66%)
+[2024-01-15 01:50:00] WARN  pod/payment-service-7d9f8b  Memory usage: 780Mi/1Gi (78%)
+[2024-01-15 01:54:00] WARN  pod/payment-service-7d9f8b  DB connection pool at 89%: 45/50 used
+[2024-01-15 01:55:00] WARN  pod/payment-service-7d9f8b  Memory usage: 910Mi/1Gi (89%) — critical
+[2024-01-15 01:58:00] ERROR pod/payment-service-7d9f8b  DB connection pool EXHAUSTED: max=50, queued=112
+[2024-01-15 01:58:12] ERROR pod/payment-service-7d9f8b  SQLException: Cannot get connection, pool timeout after 30000ms
+    at com.payments.db.HikariPool.getConnection(HikariPool.java:213)
+    at com.payments.service.PaymentProcessor.processTransaction(PaymentProcessor.java:78)
+[2024-01-15 01:59:30] ERROR pod/payment-service-7d9f8b  java.lang.OutOfMemoryError: Java heap space
+    at com.payments.cache.ResponseCache.put(ResponseCache.java:145)
+    at com.payments.service.PaymentProcessor.cacheResult(PaymentProcessor.java:234)
+[2024-01-15 02:00:01] ERROR pod/payment-service-7d9f8b  Container killed: OOMKilled (exit code 137)
+[2024-01-15 02:00:03] WARN  kubernetes/scheduler  CrashLoopBackOff: restart count 1
+[2024-01-15 02:00:15] INFO  pod/payment-service-7d9f8b  Container restarted (restart 1 of 5)
+[2024-01-15 02:00:20] ERROR pod/payment-service-7d9f8b  DB pool EXHAUSTED again on startup
+[2024-01-15 02:01:30] ERROR pod/payment-service-7d9f8b  OOMKilled again (exit code 137) — restart 2
+[2024-01-15 02:03:00] WARN  kubernetes/scheduler  CrashLoopBackOff escalating — backoff delay 20s
+
+===== NGINX INGRESS LOGS =====
+
+[2024-01-15 02:00:01] ERROR nginx/ingress  503 Service Unavailable — upstream payment-service down
+[2024-01-15 02:00:30] WARN  nginx/ingress  Circuit breaker OPEN — error rate 100%
+
+===== RECOVERY =====
+
+[2024-01-15 02:28:00] INFO  operations/oncall  Manual intervention: memory limit increased 1Gi → 2Gi
+[2024-01-15 02:30:15] INFO  pod/payment-service-7d9f8b-new  Application started successfully
+[2024-01-15 02:31:00] WARN  nginx/ingress  Circuit breaker CLOSED — service healthy

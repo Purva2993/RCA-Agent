@@ -1,0 +1,13 @@
+===== POSTGRESQL LOGS — postgres-primary — 2024-01-15 =====
+
+[2024-01-15 01:30:00] INFO  postgres-primary  Connections: 18/50 — normal operation
+[2024-01-15 01:44:00] INFO  postgres-primary  Connection spike: 38/50 — payment-service traffic increase
+[2024-01-15 01:55:00] WARN  postgres-primary  Connections: 48/50 — approaching limit
+[2024-01-15 01:57:45] WARN  postgres-primary  Connections: 50/50 — AT MAXIMUM
+[2024-01-15 01:58:00] ERROR postgres-primary  FATAL: too many connections for role "payment_user"
+[2024-01-15 01:58:05] ERROR postgres-primary  FATAL: too many connections for role "payment_user"
+[2024-01-15 01:58:10] ERROR postgres-primary  FATAL: too many connections for role "payment_user"
+[2024-01-15 01:58:30] WARN  postgres-primary  Long-running transaction waiting 28s for lock — payment_id=TXN-98234
+[2024-01-15 02:00:02] INFO  postgres-primary  Connections dropped to 14 — pod restart freed connections
+[2024-01-15 02:01:00] ERROR postgres-primary  Connections 50/50 again — pending requests reconnecting
+[2024-01-15 02:30:00] INFO  postgres-primary  Connections: 8/50 — stable after manual restart
